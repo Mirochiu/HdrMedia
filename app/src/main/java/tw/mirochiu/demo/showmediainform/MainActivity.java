@@ -191,7 +191,7 @@ public class MainActivity extends AppCompatActivity {
         }
         showMessage("******************************");
         showMessage("Selected path:" + selectedPath);
-        player.playURL(selectedPath, MainPlayer.TYPE_VIDEO);
+        player.playURL(selectedPath, MainPlayer.TYPE_MEDIA_CODEC);
     }
 
     @Override

@@ -13,12 +13,8 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 import android.view.SurfaceHolder;
-import android.widget.Toast;
 
-import java.io.File;
 import java.io.FileDescriptor;
-import java.net.URI;
-import java.net.URISyntaxException;
 
 public class MainPlayer extends PlayerAdapter {
     private static String TAG = MainPlayer.class.getSimpleName();
@@ -26,6 +22,7 @@ public class MainPlayer extends PlayerAdapter {
 
     static final int TYPE_MUSIC = 0;
     static final int TYPE_VIDEO = 1;
+    static final int TYPE_MEDIA_CODEC = 2;
     static final Callback DEFAULT_CALLBACK = new Callback() {
         @Override
         public SurfaceHolder onDisplayRequired() {
@@ -49,6 +46,7 @@ public class MainPlayer extends PlayerAdapter {
     private Context context;
     private Object mpLock = new Object();
     private MediaPlayer mp;
+    private MediaMatter matter;
     private HandlerThread handlerThread;
     private Handler handler;
     private Ringtone ring;
@@ -57,6 +55,7 @@ public class MainPlayer extends PlayerAdapter {
     public boolean isPlaying() {
         Log.v(TAG, "isPlaying");
         synchronized (mpLock) {
+            if (null != matter) return matter.isPlaying();
             if (null != mp) return mp.isPlaying();
         }
         return false;
@@ -134,6 +133,14 @@ public class MainPlayer extends PlayerAdapter {
     protected void stopPlayback() {
         if (DEBUG) Log.v(TAG, "in stopPlayback");
         synchronized (mpLock) {
+            try{
+                if (null != matter) {
+                    if (DEBUG) Log.v(TAG, "stop matter");
+                    matter.release();
+                }
+            } finally {
+                matter = null;
+            }
             try {
                 if (null != mp) {
                     if (mp.isPlaying()) {
@@ -242,6 +249,28 @@ public class MainPlayer extends PlayerAdapter {
                 if (DEBUG) Log.v(TAG, "in startPlayback " + mediaSource + " type" + type);
                 try {
                     synchronized (mpLock) {
+                        if (TYPE_MEDIA_CODEC == type) {
+                            Uri uri = Uri.parse((String) mediaSource);
+                            if (DEBUG)  Log.v(TAG, "new MediaCodec " + uri);
+                            matter = MediaMatter.buildMediaMatter(context, uri, MediaMatter.AUTO_TRACK, MediaMatter.AUTO_TRACK);
+                            if (null == matter.selectedVideoFormat && null == matter.selectedAudioFormat) {
+                                Log.e(TAG, "cannot found a pair A/V track:");
+                                callback.onError(MainPlayer.this, -1, 0);
+                                return;
+                            }
+                            if (DEBUG) Log.v(TAG, "video format:" + matter.selectedVideoFormat);
+                            if (DEBUG) Log.v(TAG, "audio format:" + matter.selectedAudioFormat);
+                            if (DEBUG) Log.v(TAG, "setup display");
+                            SurfaceHolder display = callback.onDisplayRequired();
+                            if (null == display) {
+                                Log.e(TAG, "onDisplayRequired is null");
+                                callback.onError(MainPlayer.this, -1, 0);
+                                return;
+                            }
+                            matter.startAsync(display.getSurface(), callback, MainPlayer.this);
+                            callback.onStart(MainPlayer.this);
+                            return;
+                        }
                         if (DEBUG)  Log.v(TAG, "new mp");
                         mp = new MediaPlayer();
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
