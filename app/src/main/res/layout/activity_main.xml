@@ -78,7 +78,7 @@
         android:scrollbarSize="10dp"
         android:scrollbars="vertical"
         android:fadeScrollbars="false"
-        android:gravity="top|left"
+        android:gravity="top|start"
         android:text="msg\n" />
 
     <SurfaceView
