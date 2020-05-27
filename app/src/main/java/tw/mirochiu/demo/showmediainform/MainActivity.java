@@ -84,9 +84,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         if (txtMsgView.getLineHeight() * txtMsgView.getLineCount() >= txtMsgView.getHeight()) {
-                            txtMsgView.setGravity(Gravity.BOTTOM | Gravity.LEFT);
+                            txtMsgView.setGravity(Gravity.BOTTOM | Gravity.START);
                         } else {
-                            txtMsgView.setGravity(Gravity.TOP | Gravity.LEFT);
+                            txtMsgView.setGravity(Gravity.TOP | Gravity.START);
                         }
                     }
                 });
@@ -224,9 +224,18 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             Display.HdrCapabilities cap = display.getHdrCapabilities();
             int[] typeList = cap.getSupportedHdrTypes();
-            showMessage("  MaxAverageLuminance:" + cap.getDesiredMaxAverageLuminance());
-            showMessage("  MaxLuminance:" + cap.getDesiredMaxLuminance());
-            showMessage("  MinLuminance:" + cap.getDesiredMinLuminance());
+            if (Display.HdrCapabilities.INVALID_LUMINANCE != cap.getDesiredMaxAverageLuminance())
+                showMessage("  MaxAverageLuminance:" + cap.getDesiredMaxAverageLuminance());
+            else
+                showMessage("  MaxAverageLuminance not available");
+            if (Display.HdrCapabilities.INVALID_LUMINANCE != cap.getDesiredMaxLuminance())
+                showMessage("  MaxLuminance:" + cap.getDesiredMaxLuminance());
+            else
+                showMessage("  MaxLuminance not available");
+            if (Display.HdrCapabilities.INVALID_LUMINANCE != cap.getDesiredMinLuminance())
+                showMessage("  MinLuminance:" + cap.getDesiredMinLuminance());
+            else
+                showMessage("  MinLuminance not available");
             for (int type : typeList) {
                 switch (type) {
                     case Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION:
