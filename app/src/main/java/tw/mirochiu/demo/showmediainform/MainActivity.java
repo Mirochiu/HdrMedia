@@ -24,6 +24,9 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -44,6 +47,10 @@ import java.io.File;
 public class MainActivity extends AppCompatActivity {
     TextView txtMsgView;
     Handler handler;
+    String selectedPath;
+    MainPlayer player;
+    SurfaceView viewVideo;
+    SurfaceHolder viedoHolder = null;
     final int REQUEST_TAKE_GALLERY_VIDEO = 0x1001;
     final int EXTERNAL_STORAGE_READ_WRITE_REQUEST = 0x1002;
 
@@ -96,11 +103,38 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-        Button display = findViewById(R.id.btnDisplay);
+        final Button display = findViewById(R.id.btnDisplay);
         display.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 showDisplaySupportInfo();
+            }
+        });
+        final Button playback = findViewById(R.id.btnPlayback);
+        playback.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        playMedia();
+                    }
+                });
+            }
+        });
+        final Button stop = findViewById(R.id.btnStop);
+        stop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (player.isPlaying()) {
+                            showMessage("stop playback");
+                            player.stop();
+                        }
+                    }
+                });
             }
         });
         checkPermissionAndShow(Manifest.permission.WRITE_EXTERNAL_STORAGE);
@@ -108,6 +142,73 @@ public class MainActivity extends AppCompatActivity {
         HandlerThread thread = new HandlerThread("just a name");
         thread.start();
         handler = new Handler(thread.getLooper());
+        viewVideo = findViewById(R.id.surfaceView);
+        viewVideo.getHolder().addCallback(new SurfaceHolder.Callback() {
+            private String TAG = "SURFACE";
+            @Override
+            public void surfaceCreated(SurfaceHolder surfaceHolder) {
+                viedoHolder = surfaceHolder;
+                Log.d(TAG, "surfaceCreated " + surfaceHolder);
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+                Log.d(TAG, "surfaceDestroyed");
+                viedoHolder = null;
+            }
+        });
+
+        player = new MainPlayer(getApplicationContext(), new MainPlayer.Callback() {
+            private String TAG = "PLAYER";
+            @Override
+            public SurfaceHolder onDisplayRequired() {
+                Log.e(TAG, "onDisplayRequired " + viedoHolder);
+                return  viedoHolder;
+            }
+
+            @Override
+            public void onError(MainPlayer player, int i1, int i2) {
+                showMessage("playback got exception " + i1 + "," + i2);
+            }
+
+            @Override
+            public void onStart(MainPlayer player) {
+                showMessage("playback started");
+            }
+
+            @Override
+            public void onCompletion(MainPlayer player) {
+                showMessage("playback completion");
+            }
+        });
+    }
+
+    private void playMedia() {
+        if (selectedPath == null) {
+            showMessage("No selected media");
+            return;
+        }
+        showMessage("******************************");
+        showMessage("Selected path:" + selectedPath);
+        player.playURL(selectedPath, MainPlayer.TYPE_VIDEO);
+    }
+
+    @Override
+    protected void onPause() {
+        if (player != null) {
+            player.pause();
+        }
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
     }
 
     private void showDisplaySupportInfo() {
@@ -366,7 +467,7 @@ public class MainActivity extends AppCompatActivity {
         showMessage("******************************");
         showMessage("User selected:");
         showMessage("  URI:" + uri);
-        String selectedPath = getPathFromMediaStore(uri);
+        selectedPath = getPathFromMediaStore(uri);
         showMessage("  File path:" + selectedPath + " exists? " +
                 (selectedPath==null ? false : (new File(selectedPath).exists())));
         MediaExtractor extractor = new MediaExtractor();
@@ -561,5 +662,13 @@ public class MainActivity extends AppCompatActivity {
                 return true;
         }
         return false;
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (player != null) {
+            player.release();
+        }
+        super.onDestroy();
     }
 }

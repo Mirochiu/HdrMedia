@@ -49,6 +49,22 @@
         app:layout_constraintTop_toBottomOf="@+id/btnFormat"
         app:layout_constraintRight_toRightOf="parent" />
 
+    <Button
+        android:id="@+id/btnPlayback"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Play"
+        app:layout_constraintTop_toBottomOf="@+id/btnDisplay"
+        app:layout_constraintRight_toRightOf="parent" />
+
+    <Button
+        android:id="@+id/btnStop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stop"
+        app:layout_constraintTop_toBottomOf="@+id/btnPlayback"
+        app:layout_constraintRight_toRightOf="parent" />
+
     <TextView
         android:id="@+id/textView"
         android:layout_width="0dp"
@@ -64,5 +80,12 @@
         android:fadeScrollbars="false"
         android:gravity="top|left"
         android:text="msg\n" />
+
+    <SurfaceView
+        android:id="@+id/surfaceView"
+        android:layout_width="320px"
+        android:layout_height="200px"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/nav_view" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
