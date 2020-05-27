@@ -33,6 +33,8 @@ import android.widget.TextView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -305,31 +307,28 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case EXTERNAL_STORAGE_READ_WRITE_REQUEST: {
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    askForVideo();
+                                           @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (EXTERNAL_STORAGE_READ_WRITE_REQUEST == requestCode) {
+            if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                askForVideo();
+            } else {
+                boolean denied = ActivityCompat
+                        .shouldShowRequestPermissionRationale(this,
+                                permissions[0]);
+                if (denied) {
+                    showErrorDialog("No permission, this function is not working");
                 } else {
-                    boolean denied = ActivityCompat
-                            .shouldShowRequestPermissionRationale(this,
-                                    permissions[0]);
-                    if (denied) {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:" + getPackageName()))
+                            .addCategory(Intent.CATEGORY_DEFAULT)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    try {
+                        startActivity(intent);
+                    } catch (Exception e) {
                         showErrorDialog("No permission, this function is not working");
-                    } else {
-                        Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                Uri.parse("package:" + getPackageName()))
-                                .addCategory(Intent.CATEGORY_DEFAULT)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        try {
-                            startActivity(intent);
-                        } catch (Exception e) {
-                            showErrorDialog("No permission, this function is not working");
-                        }
                     }
                 }
-                return;
             }
         }
     }
@@ -402,7 +401,7 @@ public class MainActivity extends AppCompatActivity {
         // got error in nokia
         final String id = DocumentsContract.getDocumentId(uri);
         final Uri contentUri = ContentUris.withAppendedId(
-                Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
+                Uri.parse("content://downloads/public_downloads"), Long.parseLong(id));
         /* candidates
         "content://downloads/public_downloads"
         "content://downloads/my_downloads",
@@ -453,21 +452,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String queryContent(Uri uri, String type, String selection, String[] args) {
-        Cursor cursor = null;
         String[] projection = type == null ? null : (new String[]{type});
-        try {
-            cursor = getContentResolver().query(uri, projection, selection, args, null);
-            if (cursor.moveToFirst()) {
+        try (Cursor cursor =
+                     getContentResolver().query(uri, projection, selection, args, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
                 return cursor.getString(cursor.getColumnIndexOrThrow(type));
             } else {
                 Log.e("queryContent", "no item");
             }
         } catch (Exception e) {
             Log.e("queryContent", "error:" + e.getMessage());
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
         }
         return null;
     }
@@ -478,13 +472,13 @@ public class MainActivity extends AppCompatActivity {
         showMessage("  URI:" + uri);
         selectedPath = getPathFromMediaStore(uri);
         showMessage("  File path:" + selectedPath + " exists? " +
-                (selectedPath==null ? false : (new File(selectedPath).exists())));
+                (selectedPath!=null && (new File(selectedPath).exists())));
         MediaExtractor extractor = new MediaExtractor();
         try {
             extractor.setDataSource(getApplicationContext(), uri, null);
             StringBuilder stringBuilder = new StringBuilder();
             final int totalTracks = extractor.getTrackCount();
-            stringBuilder.append("  Total tracks:" + totalTracks).append("\n");
+            stringBuilder.append("  Total tracks:").append(totalTracks).append("\n");
             for (int trackIdx = 0; trackIdx < totalTracks; ++trackIdx) {
                 MediaFormat format = extractor.getTrackFormat(trackIdx);
                 stringBuilder.append("  Track[").append(trackIdx).append("] attributes:").append("\n");
@@ -500,19 +494,23 @@ public class MainActivity extends AppCompatActivity {
                         stringBuilder.append("    ").append("Frame rate:").append(format.getInteger(MediaFormat.KEY_FRAME_RATE)).append(" frames/s\n");
                     }
                     //Optionals: KEY_CAPTURE_RATE, KEY_MAX_WIDTH, KEY_MAX_HEIGHT, KEY_PUSH_BLANK_BUFFERS_ON_STOP
-                    if (format.containsKey(MediaFormat.KEY_HDR10_PLUS_INFO)) {
-                        stringBuilder.append("    ").append("HDR10+:").append(format.getInteger(MediaFormat.KEY_HDR10_PLUS_INFO)).append("\n");
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        if (format.containsKey(MediaFormat.KEY_HDR10_PLUS_INFO)) {
+                            stringBuilder.append("    ").append("HDR10+:").append(format.getInteger(MediaFormat.KEY_HDR10_PLUS_INFO)).append("\n");
+                        }
                     }
-                    if (format.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
-                        stringBuilder.append("    ").append("HDR:").append(format.getInteger(MediaFormat.KEY_HDR_STATIC_INFO)).append("\n");
-                    }
-                    if (format.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
-                        int std = format.getInteger(MediaFormat.KEY_COLOR_STANDARD);
-                        stringBuilder.append("    ").append("Color standard:").append(ColorStandardToString(std)).append("\n");
-                    }
-                    if (format.containsKey(MediaFormat.KEY_COLOR_TRANSFER)) {
-                        int transfer = format.getInteger(MediaFormat.KEY_COLOR_TRANSFER);
-                        stringBuilder.append("    ").append("Color transfer:").append(ColorTransferToString(transfer)).append("\n");
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        if (format.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
+                            stringBuilder.append("    ").append("HDR:").append(format.getInteger(MediaFormat.KEY_HDR_STATIC_INFO)).append("\n");
+                        }
+                        if (format.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
+                            int std = format.getInteger(MediaFormat.KEY_COLOR_STANDARD);
+                            stringBuilder.append("    ").append("Color standard:").append(ColorStandardToString(std)).append("\n");
+                        }
+                        if (format.containsKey(MediaFormat.KEY_COLOR_TRANSFER)) {
+                            int transfer = format.getInteger(MediaFormat.KEY_COLOR_TRANSFER);
+                            stringBuilder.append("    ").append("Color transfer:").append(ColorTransferToString(transfer)).append("\n");
+                        }
                     }
                     if (format.containsKey(MediaFormat.KEY_COLOR_FORMAT)) {
                         int colorFormat = format.getInteger(MediaFormat.KEY_COLOR_FORMAT);
@@ -526,8 +524,10 @@ public class MainActivity extends AppCompatActivity {
                     if (format.containsKey(MediaFormat.KEY_IS_ADTS)) {
                         stringBuilder.append("    ").append("ADTS:").append(format.getInteger(MediaFormat.KEY_IS_ADTS)).append("\n");
                     }
-                    if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                        stringBuilder.append("    ").append("PCM:").append(format.getInteger(MediaFormat.KEY_PCM_ENCODING)).append("\n");
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                            stringBuilder.append("    ").append("PCM:").append(format.getInteger(MediaFormat.KEY_PCM_ENCODING)).append("\n");
+                        }
                     }
                     if (format.containsKey(MediaFormat.KEY_LANGUAGE)) {
                         stringBuilder.append("    ").append("Language:").append(format.getString(MediaFormat.KEY_LANGUAGE)).append("\n");
@@ -565,7 +565,7 @@ public class MainActivity extends AppCompatActivity {
                                 stringBuilder.append("<null>");
                                 break;
                             default:
-                                stringBuilder.append("ValueType(" + type + ")");
+                                stringBuilder.append("ValueType(").append(type).append(")");
                                 break;
                         }
                         stringBuilder.append('\n');
@@ -619,7 +619,8 @@ public class MainActivity extends AppCompatActivity {
         return "ColorFormat(" + fmt + ")";
     }
 
-    private boolean isSubtitleMimeType(String mime) {
+    private boolean isSubtitleMimeType(@Nullable String mime) {
+        if (null == mime) return false;
         switch (mime) {
             case MediaFormat.MIMETYPE_IMAGE_ANDROID_HEIC:
             case MediaFormat.MIMETYPE_TEXT_CEA_608:
@@ -631,7 +632,8 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    private boolean isAudioMimeType(String mime) {
+    private boolean isAudioMimeType(@Nullable String mime) {
+        if (null == mime) return false;
         switch (mime) {
             case MediaFormat.MIMETYPE_AUDIO_AAC:
             case MediaFormat.MIMETYPE_AUDIO_AC3:
@@ -655,7 +657,8 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    private boolean isVideoMimeType(String mime) {
+    private boolean isVideoMimeType(@Nullable String mime) {
+        if (null == mime) return false;
         switch (mime) {
             case MediaFormat.MIMETYPE_VIDEO_AV1:
             case MediaFormat.MIMETYPE_VIDEO_AVC:
