@@ -78,11 +78,17 @@ public class ContentUri2FilePath {
         // nox e.g. content://com.android.externalstorage.documents/document/primary%3ADownload%2Fh264.mp4
         Log.d(TAG, "getPathFromExternalStorage");
         final String[] split = DocumentsContract.getDocumentId(uri).split(":");
-        if ("primary".equalsIgnoreCase(split[0])) {
-            return new File(Environment.getExternalStorageDirectory(), split[1]).toString();
-        } else {
+        if (split.length <= 1) {
             Log.e(TAG, "ERROR:cannot handle " + split[0] + " storage");
             return null;
+        } else {
+            if ("primary".equalsIgnoreCase(split[0])) {
+                return new File(Environment.getExternalStorageDirectory(), split[1]).toString();
+            } else {
+                // nokia e.g. content://com.android.externalstorage.documents/document/436D-1D0C%3ADownload%2Fh264.mp4
+                File externalStorage = new File("/storage", split[0]);
+                return new File(externalStorage, split[1]).toString();
+            }
         }
     }
 
