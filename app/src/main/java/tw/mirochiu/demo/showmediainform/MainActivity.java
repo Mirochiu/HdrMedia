@@ -496,12 +496,12 @@ public class MainActivity extends AppCompatActivity {
                     //Optionals: KEY_CAPTURE_RATE, KEY_MAX_WIDTH, KEY_MAX_HEIGHT, KEY_PUSH_BLANK_BUFFERS_ON_STOP
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         if (format.containsKey(MediaFormat.KEY_HDR10_PLUS_INFO)) {
-                            stringBuilder.append("    ").append("HDR10+:").append(format.getInteger(MediaFormat.KEY_HDR10_PLUS_INFO)).append("\n");
+                            stringBuilder.append("    ").append("HDR10+ info:").append(format.getByteBuffer(MediaFormat.KEY_HDR10_PLUS_INFO)).append("\n");
                         }
                     }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                         if (format.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
-                            stringBuilder.append("    ").append("HDR:").append(format.getInteger(MediaFormat.KEY_HDR_STATIC_INFO)).append("\n");
+                            stringBuilder.append("    ").append("HDR static info:").append(format.getByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO)).append("\n");
                         }
                         if (format.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
                             int std = format.getInteger(MediaFormat.KEY_COLOR_STANDARD);
