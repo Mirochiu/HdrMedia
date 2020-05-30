@@ -101,6 +101,11 @@ public class ContentUri2FilePath {
                     MediaStore.Video.Media.DATA, /* "_data" */
                     MediaStore.Video.Media._ID + "=?", /* _id=? */
                     new String[]{split[1]});
+        } else if ("audio".equals(split[0])) {
+            return queryContent(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    MediaStore.Audio.Media.DATA, /* "_data" */
+                    MediaStore.Audio.Media._ID + "=?", /* _id=? */
+                    new String[]{split[1]});
         } else {
             Log.e(TAG, "ERROR:cannot handle " + split[0] + " type");
             return null;
