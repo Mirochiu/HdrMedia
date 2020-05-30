@@ -547,7 +547,7 @@ public class MainActivity extends AppCompatActivity {
                         int type = format.getValueTypeForKey(key);
                         switch (type) {
                             case MediaFormat.TYPE_BYTE_BUFFER:
-                                stringBuilder.append("<byte-buffer>");
+                                stringBuilder.append(format.getByteBuffer(key));
                                 break;
                             case MediaFormat.TYPE_FLOAT:
                                 stringBuilder.append(format.getFloat(key));
