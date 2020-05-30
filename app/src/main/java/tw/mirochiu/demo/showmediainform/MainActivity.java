@@ -1,22 +1,16 @@
 package tw.mirochiu.demo.showmediainform;
 
 import android.Manifest;
-import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.provider.DocumentsContract;
-import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.method.ScrollingMovementMethod;
@@ -24,7 +18,6 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
-import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -371,108 +364,17 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    private String onHandleMediaProvider(Uri uri) {
-        // nox e.g content://com.android.providers.media.documents/document/video%3A72
-        Log.d("MEDIASTORE", "onHandleMediaProvider");
-        final String[] split = DocumentsContract.getDocumentId(uri).split(":"); // "%3A"
-        if ("video".equals(split[0])) {
-            return queryContent(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                    MediaStore.Video.Media.DATA, /* "_data" */
-                    MediaStore.Video.Media._ID + "=?", /* _id=? */
-                    new String[]{split[1]});
-        } else {
-            showErrorDialog("ERROR:cannot handle " + split[0] + " type onHandleMediaProvider");
-            return null;
-        }
-    }
-
-    private String onHandleDownloadsProvider(Uri uri) {
-        // nokia e.g content://com.android.providers.downloads.documents/document/7597
-        Log.d("MEDIASTORE", "onHandleDownloadsProvider");
-        final String fileName = queryContent(uri,
-                MediaStore.DownloadColumns.DISPLAY_NAME /* "_display_name" */, null, null);
-        if (fileName != null) {
-            return new File(
-                    Environment.getExternalStoragePublicDirectory(
-                            Environment.DIRECTORY_DOWNLOADS).toString(),
-                    fileName).toString();
-        }
-        // cannot proof
-        // got error in nokia
-        final String id = DocumentsContract.getDocumentId(uri);
-        final Uri contentUri = ContentUris.withAppendedId(
-                Uri.parse("content://downloads/public_downloads"), Long.parseLong(id));
-        /* candidates
-        "content://downloads/public_downloads"
-        "content://downloads/my_downloads",
-        "content://downloads/all_downloads"
-         */
-        return queryContent(contentUri, MediaStore.Video.Media.DATA, null, null);
-    }
-
-    private String onHandleExternalStorage(Uri uri) {
-        // nox e.g. content://com.android.externalstorage.documents/document/primary%3ADownload%2Fh264.mp4
-        Log.d("MEDIASTORE", "onHandleExternalStorage");
-        final String[] split = DocumentsContract.getDocumentId(uri).split(":");
-        if ("primary".equalsIgnoreCase(split[0])) {
-            return new File(Environment.getExternalStorageDirectory(), split[1]).toString();
-        } else {
-            showErrorDialog("ERROR:cannot handle " + split[0] + " storage onHandleExternalStorage");
-            return null;
-        }
-    }
-
-    /*
-    @see
-    https://developer.android.com/guide/topics/providers/document-provider
-    https://stackoverflow.com/questions/3401579
-    https://developer.android.com/training/data-storage/shared/media
-    https://github.com/HBiSoft/PickiT/blob/92c959ba85c7a0bde534e37d917fd76ee90cbe6c/pickit/src/main/java/com/hbisoft/pickit/Utils.java#L58
-    */
-    public String getPathFromMediaStore(Uri uri) {
-        // e.g. "content://"
-        if (!ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) {
-            Log.d("MEDIASTORE", "cannot handle non-content uri:" + uri);
-            return null;
-        }
-        if (DocumentsContract.isDocumentUri(getApplicationContext(), uri)) {
-            if ("com.android.externalstorage.documents".equals(uri.getAuthority())) {
-                return onHandleExternalStorage(uri);
-            }
-            if ("com.android.providers.downloads.documents".equals(uri.getAuthority())) {
-                return onHandleDownloadsProvider(uri);
-            }
-            if ("com.android.providers.media.documents".equals(uri.getAuthority())) {
-                return onHandleMediaProvider(uri);
-            }
-        }
-        Log.d("MEDIASTORE", "other documents");
-        // nox e.g. content://media/external/video/media/72
-        return queryContent(uri, MediaStore.Video.Media.DATA, /* "_data" */ null, null);
-    }
-
-    private String queryContent(Uri uri, String type, String selection, String[] args) {
-        String[] projection = type == null ? null : (new String[]{type});
-        try (Cursor cursor =
-                     getContentResolver().query(uri, projection, selection, args, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                return cursor.getString(cursor.getColumnIndexOrThrow(type));
-            } else {
-                Log.e("queryContent", "no item");
-            }
-        } catch (Exception e) {
-            Log.e("queryContent", "error:" + e.getMessage());
-        }
-        return null;
-    }
-
     private void showMediaFileInfo(Uri uri) {
         showMessage("******************************");
         showMessage("User selected:");
         showMessage("  URI:" + uri);
-        selectedPath = getPathFromMediaStore(uri);
-        showMessage("  File path:" + selectedPath + " exists? " +
-                (selectedPath!=null && (new File(selectedPath).exists())));
+        selectedPath = new ContentUri2FilePath(getApplicationContext()).getPathFromContentUri(uri);
+        showMessage("  File path:" + selectedPath);
+        if (selectedPath == null) {
+            showErrorDialog("Cannot get path from MediaStore");
+        } else if (!new File(selectedPath).exists()) {
+            showErrorDialog("File not exists. the path is going wrong:" + selectedPath);
+        }
         MediaExtractor extractor = new MediaExtractor();
         try {
             extractor.setDataSource(getApplicationContext(), uri, null);
